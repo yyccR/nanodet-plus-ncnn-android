@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">nanodet-plus-ncnn</string>
+    <string-array name="model">
+        <item>nanodet-plus-coco-416</item>
+        <item>nanodet-plus-qr-416</item>
+    </string-array>
+</resources>
