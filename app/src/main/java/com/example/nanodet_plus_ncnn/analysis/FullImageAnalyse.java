@@ -16,9 +16,9 @@ import androidx.camera.core.ImageAnalysis;
 import androidx.camera.core.ImageProxy;
 import androidx.camera.view.PreviewView;
 
-import com.example.yolov5ncnnandroid.detector.Yolov5NcnnDetector;
-import com.example.yolov5ncnnandroid.utils.ImageProcess;
-import com.example.yolov5ncnnandroid.utils.Recognition;
+import com.example.nanodet_plus_ncnn.detector.NanodetplusNcnnDetector;
+import com.example.nanodet_plus_ncnn.utils.ImageProcess;
+import com.example.nanodet_plus_ncnn.utils.Recognition;
 
 import java.util.ArrayList;
 
@@ -45,7 +45,7 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
     private TextView inferenceTimeTextView;
     private TextView frameSizeTextView;
     ImageProcess imageProcess;
-    private Yolov5NcnnDetector yolov5NcnnDetector;
+    private NanodetplusNcnnDetector nanodetplusNcnnDetector;
 
     public FullImageAnalyse(Context context,
                             PreviewView previewView,
@@ -53,14 +53,14 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
                             int rotation,
                             TextView inferenceTimeTextView,
                             TextView frameSizeTextView,
-                            Yolov5NcnnDetector yolov5NcnnDetector) {
+                            NanodetplusNcnnDetector nanodetplusNcnnDetector) {
         this.previewView = previewView;
         this.boxLabelCanvas = boxLabelCanvas;
         this.rotation = rotation;
         this.inferenceTimeTextView = inferenceTimeTextView;
         this.frameSizeTextView = frameSizeTextView;
         this.imageProcess = new ImageProcess();
-        this.yolov5NcnnDetector = yolov5NcnnDetector;
+        this.nanodetplusNcnnDetector = nanodetplusNcnnDetector;
     }
 
     @Override
@@ -130,7 +130,7 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
 //            Matrix modelToPreviewTransform = new Matrix();
 //            previewToModelTransform.invert(modelToPreviewTransform);
 
-            Yolov5NcnnDetector.Obj[] recognitions = yolov5NcnnDetector.detect(cropImageBitmap, true);
+            NanodetplusNcnnDetector.Obj[] recognitions = nanodetplusNcnnDetector.detect(cropImageBitmap, true);
 //            ArrayList<Recognition> recognitions = yolov5TFLiteDetector.detect(imageBitmap);
 
             Bitmap emptyCropSizeBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888);
@@ -151,7 +151,7 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
             textPain.setStyle(Paint.Style.FILL);
 
 //            Log.i("ncnn:", "recognitions size: "+recognitions.length);
-            for (Yolov5NcnnDetector.Obj res : recognitions) {
+            for (NanodetplusNcnnDetector.Obj res : recognitions) {
 //                Log.i("ncnn:", res.toString());
                 RectF location = new RectF();
                 location.left = res.x;
@@ -161,14 +161,14 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
                 float confidence = res.prob;
 //                modelToPreviewTransform.mapRect(location);
                 cropCanvas.drawRect(location, boxPaint);
-                String label = yolov5NcnnDetector.getLabel(res.label);
+                String label = nanodetplusNcnnDetector.getLabel(res.label);
                 cropCanvas.drawText(label + ":" + String.format("%.2f", confidence), location.left, location.top, textPain);
             }
             long end = System.currentTimeMillis();
             long costTime = (end - start);
             image.close();
-//            Result result = new Result(costTime, emptyCropSizeBitmap);
-            emitter.onNext(new Result(costTime, emptyCropSizeBitmap));
+            Result result = new Result(costTime, emptyCropSizeBitmap);
+//            emitter.onNext(new Result(costTime, imageBitmap));
 
         }).subscribeOn(Schedulers.io()) // 这里定义被观察者,也就是上面代码的线程, 如果没定义就是主线程同步, 非异步
                 // 这里就是回到主线程, 观察者接受到emitter发送的数据进行处理

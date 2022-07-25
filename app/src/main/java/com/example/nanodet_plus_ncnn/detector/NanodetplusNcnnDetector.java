@@ -38,9 +38,11 @@ public class NanodetplusNcnnDetector {
 
     public NanodetplusNcnnDetector(Activity activity, String modelName) {
         setModelFile(modelName);
-        init(activity.getAssets(), getModelFile());
+//        init(activity.getAssets(), getModelFile());
         Log.i("ncnn:","initial model success!");
     }
+
+    public String getLabel(int labelId) {return this.LABELS[labelId];}
 
     public String getModelFile() {
         return this.MODEL_FILE;
@@ -68,9 +70,9 @@ public class NanodetplusNcnnDetector {
 
     public native boolean init(AssetManager assetManager, String modelName);
 
-    public native NanodetplusNcnnDetector.Obj[] detect(Bitmap bitmap, boolean use_gpu, int num_classes);
+    public native NanodetplusNcnnDetector.Obj[] detect(Bitmap bitmap, boolean use_gpu);
 
     static {
-        System.loadLibrary("yolov5ncnnandroid");
+        System.loadLibrary("nanodet_plus_ncnn");
     }
 }
