@@ -121,9 +121,8 @@ void generate_grid_center_priors(const int input_height, const int input_width, 
     }
 }
 
-BoxInfo disPred2Bbox(const float*& dfl_det, int label, float score, int x, int y, int stride, float width_ratio, float height_ratio)
+BoxInfo disPred2Bbox(const float*& dfl_det, int label, float score, int x, int y, int stride, float width_ratio, float height_ratio, int target_size)
 {
-    float input_size = 416.0;
     float ct_x = x * stride;
     float ct_y = y * stride;
     std::vector<float> dis_pred;
@@ -144,14 +143,14 @@ BoxInfo disPred2Bbox(const float*& dfl_det, int label, float score, int x, int y
     }
     float xmin = (std::max)(ct_x - dis_pred[0], .0f) * width_ratio;
     float ymin = (std::max)(ct_y - dis_pred[1], .0f) * height_ratio;
-    float xmax = (std::min)(ct_x + dis_pred[2], input_size) * width_ratio;
-    float ymax = (std::min)(ct_y + dis_pred[3], input_size) * height_ratio;
+    float xmax = (std::min)(ct_x + dis_pred[2], (float) target_size) * width_ratio;
+    float ymax = (std::min)(ct_y + dis_pred[3], (float) target_size) * height_ratio;
 
     //std::cout << xmin << "," << ymin << "," << xmax << "," << xmax << "," << std::endl;
     return BoxInfo { xmin, ymin, xmax, ymax, score, label };
 }
 
-void decode_infer(ncnn::Mat& feats, int num_class, std::vector<CenterPrior>& center_priors, float threshold, std::vector<std::vector<BoxInfo>>& results, float width_ratio, float height_ratio)
+void decode_infer(ncnn::Mat& feats, int num_class, int target_size, std::vector<CenterPrior>& center_priors, float threshold, std::vector<std::vector<BoxInfo>>& results, float width_ratio, float height_ratio)
 {
     const int num_points = center_priors.size();
     //printf("num_points:%d\n", num_points);
@@ -178,14 +177,13 @@ void decode_infer(ncnn::Mat& feats, int num_class, std::vector<CenterPrior>& cen
         {
             //std::cout << "label:" << cur_label << " score:" << score << std::endl;
             const float* bbox_pred = feats.row(idx) + num_class;
-            results[cur_label].push_back(disPred2Bbox(bbox_pred, cur_label, score, ct_x, ct_y, stride, width_ratio, height_ratio));
+            results[cur_label].push_back(disPred2Bbox(bbox_pred, cur_label, score, ct_x, ct_y, stride, width_ratio, height_ratio, target_size));
             //debug_heatmap.at<cv::Vec3b>(row, col)[0] = 255;
             //cv::imshow("debug", debug_heatmap);
         }
 
     }
 }
-
 
 void nms(std::vector<BoxInfo>& input_boxes, float NMS_THRESH)
 {
@@ -224,12 +222,12 @@ extern "C" {
 // FIXME DeleteGlobalRef is missing for objCls
 static jclass objCls = NULL;
 static jmethodID constructortorId;
-static jfieldID xId;
-static jfieldID yId;
-static jfieldID wId;
-static jfieldID hId;
+static jfieldID x1Id;
+static jfieldID y1Id;
+static jfieldID x2Id;
+static jfieldID y2Id;
 static jfieldID labelId;
-static jfieldID probId;
+static jfieldID scoreId;
 
 
 extern "C"
@@ -241,7 +239,7 @@ Java_com_example_nanodet_1plus_1ncnn_detector_NanodetplusNcnnDetector_detect(JNI
                                                                              jint num_classes) {
 
     nanodetplus.opt.use_vulkan_compute = true;
-    // nanodet.opt.use_bf16_storage = true;
+    nanodetplus.opt.use_bf16_storage = true;
 
     // original pretrained model from https://github.com/RangiLyu/nanodet
     // the ncnn model https://github.com/nihui/ncnn-assets/tree/master/models
@@ -310,9 +308,6 @@ Java_com_example_nanodet_1plus_1ncnn_detector_NanodetplusNcnnDetector_detect(JNI
 //    ex.input("data", in_pad);
     ex.input("data", in);
 
-    std::vector<std::vector<BoxInfo>> results;
-    results.resize(num_classes);
-
     ncnn::Mat out;
     ex.extract("output", out);
     // printf("%d %d %d \n", out.w, out.h, out.c);
@@ -322,7 +317,9 @@ Java_com_example_nanodet_1plus_1ncnn_detector_NanodetplusNcnnDetector_detect(JNI
     generate_grid_center_priors(target_size, target_size, strides, center_priors);
 
 //    decode_infer(out, center_priors, score_threshold, results);
-    decode_infer(out, num_classes, center_priors, score_threshold, results, width_ratio, height_ratio);
+    std::vector<std::vector<BoxInfo>> results;
+    results.resize(num_classes);
+    decode_infer(out, num_classes, target_size, center_priors, score_threshold, results, width_ratio, height_ratio);
 
     std::vector<BoxInfo> dets;
     for (int i = 0; i < (int)results.size(); i++)
@@ -334,6 +331,24 @@ Java_com_example_nanodet_1plus_1ncnn_detector_NanodetplusNcnnDetector_detect(JNI
             dets.push_back(box);
         }
     }
+
+
+    jobjectArray jObjArray = env->NewObjectArray(dets.size(), objCls, NULL);
+    for (size_t i=0; i < dets.size(); i++)
+    {
+        jobject jObj = env->NewObject(objCls, constructortorId, thiz);
+
+        env->SetFloatField(jObj, x1Id, dets[i].x1);
+        env->SetFloatField(jObj, y1Id, dets[i].y1);
+        env->SetFloatField(jObj, x2Id, dets[i].x2);
+        env->SetFloatField(jObj, y2Id, dets[i].y2);
+        env->SetIntField(jObj, labelId, dets[i].label);
+        env->SetFloatField(jObj, scoreId, dets[i].score);
+
+        env->SetObjectArrayElement(jObjArray, i, jObj);
+    }
+
+    return jObjArray;
 }
 
 extern "C"
@@ -380,17 +395,17 @@ Java_com_example_nanodet_1plus_1ncnn_detector_NanodetplusNcnnDetector_init(JNIEn
 
     // init jni glue
     jclass localObjCls = env->FindClass(
-            "com/example/nanodet_plus_ncnn/detector/NanodetplusNcnnDetector$Obj");
+            "com/example/nanodet_plus_ncnn/detector/NanodetplusNcnnDetector$BoxInfo");
     objCls = reinterpret_cast<jclass>(env->NewGlobalRef(localObjCls));
 
     constructortorId = env->GetMethodID(objCls, "<init>", "(Lcom/example/nanodet_plus_ncnn/detector/NanodetplusNcnnDetector;)V");
 
-    xId = env->GetFieldID(objCls, "x", "F");
-    yId = env->GetFieldID(objCls, "y", "F");
-    wId = env->GetFieldID(objCls, "w", "F");
-    hId = env->GetFieldID(objCls, "h", "F");
+    x1Id = env->GetFieldID(objCls, "x1", "F");
+    y1Id = env->GetFieldID(objCls, "y1", "F");
+    x2Id = env->GetFieldID(objCls, "x2", "F");
+    y2Id = env->GetFieldID(objCls, "y2", "F");
     labelId = env->GetFieldID(objCls, "label", "I");
-    probId = env->GetFieldID(objCls, "prob", "F");
+    scoreId = env->GetFieldID(objCls, "score", "F");
 
     return JNI_TRUE;
 }

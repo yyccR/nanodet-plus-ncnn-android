@@ -132,7 +132,7 @@ public class FullScreenAnalyse implements ImageAnalysis.Analyzer {
 //
 //            Matrix modelToPreviewTransform = new Matrix();
 //            previewToModelTransform.invert(modelToPreviewTransform);
-            NanodetplusNcnnDetector.Obj[] recognitions = nanodetplusNcnnDetector.detect(cropImageBitmap, true);
+            NanodetplusNcnnDetector.BoxInfo[] recognitions = nanodetplusNcnnDetector.detect(cropImageBitmap, true, nanodetplusNcnnDetector.NUM_CLASSES);
 
 //            ArrayList<Recognition> recognitions = yolov5NcnnDetector.Detect(modelInputBitmap);
 //
@@ -150,14 +150,14 @@ public class FullScreenAnalyse implements ImageAnalysis.Analyzer {
             textPain.setStyle(Paint.Style.FILL);
 
 //            Log.i("ncnn:", "recognitions size: "+recognitions.length);
-            for (NanodetplusNcnnDetector.Obj res : recognitions) {
+            for (NanodetplusNcnnDetector.BoxInfo res : recognitions) {
 //                Log.i("ncnn:", res.toString());
                 RectF location = new RectF();
-                location.left = res.x;
-                location.top = res.y;
-                location.right = res.x + res.w;
-                location.bottom = res.y + res.h;
-                float confidence = res.prob;
+                location.left = res.x1;
+                location.top = res.y1;
+                location.right = res.x2;
+                location.bottom = res.y2;
+                float confidence = res.score;
 //                modelToPreviewTransform.mapRect(location);
                 cropCanvas.drawRect(location, boxPaint);
                 String label = nanodetplusNcnnDetector.getLabel(res.label);

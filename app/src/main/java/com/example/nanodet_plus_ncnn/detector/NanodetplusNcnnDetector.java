@@ -7,13 +7,15 @@ import android.util.Log;
 
 public class NanodetplusNcnnDetector {
 
-    public class Obj {
-        public float x;
-        public float y;
-        public float w;
-        public float h;
+    public class BoxInfo {
+        public float x1;
+        public float y1;
+        public float x2;
+        public float y2;
+//        public float w;
+//        public float h;
+        public float score;
         public int label;
-        public float prob;
     }
 
     private final String[] COCO_LABELS = {
@@ -38,7 +40,7 @@ public class NanodetplusNcnnDetector {
 
     public NanodetplusNcnnDetector(Activity activity, String modelName) {
         setModelFile(modelName);
-//        init(activity.getAssets(), getModelFile());
+        init(activity.getAssets(), getModelFile());
         Log.i("ncnn:","initial model success!");
     }
 
@@ -53,7 +55,7 @@ public class NanodetplusNcnnDetector {
 
     public void setModelFile(String modelFile){
         switch (modelFile) {
-            case "nanodet-m-coco-416":
+            case "nanodet-plus-coco-416":
                 MODEL_FILE = this.MODEL_NANODET_M_COCO;
                 LABELS = this.COCO_LABELS;
                 NUM_CLASSES = LABELS.length;
@@ -70,7 +72,7 @@ public class NanodetplusNcnnDetector {
 
     public native boolean init(AssetManager assetManager, String modelName);
 
-    public native NanodetplusNcnnDetector.Obj[] detect(Bitmap bitmap, boolean use_gpu);
+    public native NanodetplusNcnnDetector.BoxInfo[] detect(Bitmap bitmap, boolean use_gpu, int num_classes);
 
     static {
         System.loadLibrary("nanodet_plus_ncnn");

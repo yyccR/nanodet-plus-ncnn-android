@@ -65,9 +65,9 @@ public class MainActivity extends AppCompatActivity {
         // 加载模型
         try {
             this.nanodetplusNcnnDetector = new NanodetplusNcnnDetector(MainActivity.this, modelName);
-            Log.i("model", "Success loading model" + this.nanodetplusNcnnDetector.getModelFile());
+            Log.i("nanodet-plus", "Success loading model" + this.nanodetplusNcnnDetector.getModelFile());
         } catch (Exception e) {
-            Log.e("image", "load model error: " + e.getMessage() + e.toString());
+            Log.e("nanodet-plus", "load model error: " + e.getMessage() + e.toString());
         }
     }
 
@@ -115,7 +115,7 @@ public class MainActivity extends AppCompatActivity {
         cameraProcess.showCameraSupportSize(MainActivity.this);
 
         // 初始化加载yolov5s
-        initModel("yolov5s");
+        initModel("nanodet-plus-qr-416");
 
         // 监听模型切换按钮
         modelSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {

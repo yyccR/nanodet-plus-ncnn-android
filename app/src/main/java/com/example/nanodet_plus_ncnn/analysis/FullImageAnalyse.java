@@ -130,7 +130,7 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
 //            Matrix modelToPreviewTransform = new Matrix();
 //            previewToModelTransform.invert(modelToPreviewTransform);
 
-            NanodetplusNcnnDetector.Obj[] recognitions = nanodetplusNcnnDetector.detect(cropImageBitmap, true);
+            NanodetplusNcnnDetector.BoxInfo[] recognitions = nanodetplusNcnnDetector.detect(cropImageBitmap, true, nanodetplusNcnnDetector.NUM_CLASSES);
 //            ArrayList<Recognition> recognitions = yolov5TFLiteDetector.detect(imageBitmap);
 
             Bitmap emptyCropSizeBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888);
@@ -151,14 +151,14 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
             textPain.setStyle(Paint.Style.FILL);
 
 //            Log.i("ncnn:", "recognitions size: "+recognitions.length);
-            for (NanodetplusNcnnDetector.Obj res : recognitions) {
+            for (NanodetplusNcnnDetector.BoxInfo res : recognitions) {
 //                Log.i("ncnn:", res.toString());
                 RectF location = new RectF();
-                location.left = res.x;
-                location.top = res.y;
-                location.right = res.x + res.w;
-                location.bottom = res.y + res.h;
-                float confidence = res.prob;
+                location.left = res.x1;
+                location.top = res.y1;
+                location.right = res.x2;
+                location.bottom = res.y2;
+                float confidence = res.score;
 //                modelToPreviewTransform.mapRect(location);
                 cropCanvas.drawRect(location, boxPaint);
                 String label = nanodetplusNcnnDetector.getLabel(res.label);
@@ -167,8 +167,8 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
             long end = System.currentTimeMillis();
             long costTime = (end - start);
             image.close();
-            Result result = new Result(costTime, emptyCropSizeBitmap);
-//            emitter.onNext(new Result(costTime, imageBitmap));
+//            Result result = new Result(costTime, emptyCropSizeBitmap);
+            emitter.onNext(new Result(costTime, emptyCropSizeBitmap));
 
         }).subscribeOn(Schedulers.io()) // 这里定义被观察者,也就是上面代码的线程, 如果没定义就是主线程同步, 非异步
                 // 这里就是回到主线程, 观察者接受到emitter发送的数据进行处理
