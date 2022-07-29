@@ -76,6 +76,8 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
             ImageProxy.PlaneProxy[] planes = image.getPlanes();
             int imageHeight = image.getHeight();
             int imagewWidth = image.getWidth();
+            int rotate_w = rotation % 180 == 0 ? imageHeight : imagewWidth;
+            int rotate_h = rotation % 180 == 0 ? imagewWidth : imageHeight;
 
             imageProcess.fillBytes(planes, yuvBytes);
             int yRowStride = planes[0].getRowStride();
@@ -97,11 +99,14 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
             // 原图bitmap
             Bitmap imageBitmap = Bitmap.createBitmap(imagewWidth, imageHeight, Bitmap.Config.ARGB_8888);
             imageBitmap.setPixels(rgbBytes, 0, imagewWidth, 0, 0, imagewWidth, imageHeight);
+//            Log.i("nanodet","image w/h"+imagewWidth+"/"+imagewWidth+ " preview w/h"+previewWidth+"/"+previewHeight);
 
             // 图片适应屏幕fill_start格式的bitmap
             double scale = Math.max(
-                    previewHeight / (double) (rotation % 180 == 0 ? imagewWidth : imageHeight),
-                    previewWidth / (double) (rotation % 180 == 0 ? imageHeight : imagewWidth)
+//                    previewHeight / (double) (rotation % 180 == 0 ? imagewWidth : imageHeight),
+                    previewHeight / (double)rotate_h,
+//                    previewWidth / (double) (rotation % 180 == 0 ? imageHeight : imagewWidth)
+                    previewWidth / (double)rotate_w
             );
             Matrix fullScreenTransform = imageProcess.getTransformationMatrix(
                     imagewWidth, imageHeight,
@@ -129,8 +134,20 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
 
 //            Matrix modelToPreviewTransform = new Matrix();
 //            previewToModelTransform.invert(modelToPreviewTransform);
-
-            NanodetplusNcnnDetector.BoxInfo[] recognitions = nanodetplusNcnnDetector.detect(cropImageBitmap, true, nanodetplusNcnnDetector.NUM_CLASSES);
+//            int crop_w = (int) Math.floor(rotate_w * previewWidth / (rotate_w * scale));
+//            int crop_h = (int) Math.floor(rotate_h * previewHeight / (rotate_h * scale));
+//            Log.i("nanode", "crop wh "+crop_w+"/"+crop_h+" rotate wh "+previewWidth+"/"+previewHeight);
+//            NanodetplusNcnnDetector.BoxInfo[] recognitions = nanodetplusNcnnDetector.detect(
+//                    imageBitmap,
+//                    nanodetplusNcnnDetector.NUM_CLASSES,
+//                    rotation % 180 == 0 ? 90 : 0,
+//                    crop_w,
+//                    crop_h,
+//                    previewWidth,
+//                    previewHeight
+//            );
+            NanodetplusNcnnDetector.BoxInfo[] recognitions = nanodetplusNcnnDetector.detect(cropImageBitmap, nanodetplusNcnnDetector.NUM_CLASSES);
+//            NanodetplusNcnnDetector.BoxInfo[] recognitions = nanodetplusNcnnDetector.detect(cropImageBitmap, true, nanodetplusNcnnDetector.NUM_CLASSES);
 //            ArrayList<Recognition> recognitions = yolov5TFLiteDetector.detect(imageBitmap);
 
             Bitmap emptyCropSizeBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888);
@@ -150,7 +167,7 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
             textPain.setColor(Color.RED);
             textPain.setStyle(Paint.Style.FILL);
 
-//            Log.i("ncnn:", "recognitions size: "+recognitions.length);
+            Log.i("nanodet:", "recognitions size: "+recognitions.length);
             for (NanodetplusNcnnDetector.BoxInfo res : recognitions) {
 //                Log.i("ncnn:", res.toString());
                 RectF location = new RectF();
@@ -167,8 +184,8 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
             long end = System.currentTimeMillis();
             long costTime = (end - start);
             image.close();
-//            Result result = new Result(costTime, emptyCropSizeBitmap);
             emitter.onNext(new Result(costTime, emptyCropSizeBitmap));
+//            emitter.onNext(new Result(costTime, imageBitmap));
 
         }).subscribeOn(Schedulers.io()) // 这里定义被观察者,也就是上面代码的线程, 如果没定义就是主线程同步, 非异步
                 // 这里就是回到主线程, 观察者接受到emitter发送的数据进行处理

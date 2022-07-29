@@ -17,24 +17,27 @@
 // specific language governing permissions and limitations under the License.
 
 #include "net.h"
+//#include "string.h"
 
 #if defined(USE_NCNN_SIMPLEOCV)
 #include "simpleocv.h"
 #else
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
+//#include <opencv2/core/core.hpp>
+//#include <opencv2/highgui/highgui.hpp>
+//#include <opencv2/imgproc/imgproc.hpp>
 #endif
 #include "jni.h"
 #include <android/asset_manager_jni.h>
-#include <stdlib.h>
-#include <float.h>
-#include <stdio.h>
+//#include <stdlib.h>
+//#include <float.h>
+//#include <stdio.h>
 #include <vector>
+//#include "math.h"
 
 static ncnn::Net nanodetplus;
 static ncnn::UnlockedPoolAllocator g_blob_pool_allocator;
 static ncnn::PoolAllocator g_workspace_pool_allocator;
+//static float rotate_90_matrix[6];
 
 typedef struct BoxInfo {
     float x1;
@@ -58,6 +61,7 @@ typedef struct CenterPrior_
     int y;
     int stride;
 } CenterPrior;
+
 
 inline float fast_exp(float x)
 {
@@ -214,8 +218,53 @@ void nms(std::vector<BoxInfo>& input_boxes, float NMS_THRESH)
     }
 }
 
-
-
+//ncnn::Mat rotate_crop_resize(const cv::Mat& input, int rotation, int crop_w, int crop_h, int resize_h, int resize_w) {
+//
+//    const int w = input.cols;
+//    const int h = input.rows;
+//    const int c = input.channels();
+//
+//    cv::Mat rotate_out;
+//    if(rotation) {
+//        rotate_out.create(h, w, input.type());
+//        if (c == 1)
+//            ncnn::warpaffine_bilinear_c1(input.data, w, h, rotate_out.data, w, h, rotate_90_matrix);
+//        if (c == 2)
+//            ncnn::warpaffine_bilinear_c2(input.data, w, h, rotate_out.data, w, h, rotate_90_matrix);
+//        if (c == 3)
+//            ncnn::warpaffine_bilinear_c3(input.data, w, h, rotate_out.data, w, h, rotate_90_matrix);
+//        if (c == 4)
+//            ncnn::warpaffine_bilinear_c4(input.data, w, h, rotate_out.data, w, h, rotate_90_matrix);
+//    }else{
+//        rotate_out = input;
+//    }
+////    __android_log_print(ANDROID_LOG_DEBUG, "ncnn:", "%i", rotation);
+//
+//    // int type, int w, int h, int roix, int roiy, int roiw, int roih, int target_width, int target_height
+//    ncnn::Mat output = ncnn::Mat::from_pixels_roi_resize(
+//            rotate_out.data,
+//            ncnn::Mat::PIXEL_BGR,
+//            rotate_out.cols,
+//            rotate_out.rows,
+//            0,
+//            0,
+//            crop_w,
+//            crop_h,
+//            resize_h,
+//            resize_w);
+//
+////    const float* ptr = output.channel(0);
+////    for (int y=0; y<10; y++)
+////    {
+////        for (int x=0; x<10; x++)
+////        {
+////            __android_log_print(ANDROID_LOG_DEBUG, "ncnn:", "%f", ptr[x]);
+////        }
+////
+////    }
+//
+//    return output;
+//}
 
 extern "C" {
 
@@ -235,11 +284,16 @@ JNIEXPORT jobjectArray JNICALL
 Java_com_example_nanodet_1plus_1ncnn_detector_NanodetplusNcnnDetector_detect(JNIEnv *env,
                                                                              jobject thiz,
                                                                              jobject bitmap,
-                                                                             jboolean use_gpu,
-                                                                             jint num_classes) {
+                                                                             jint num_classes
+//                                                                             jint rotation,
+//                                                                             jint crop_w,
+//                                                                             jint crop_h,
+//                                                                             jint preview_w,
+//                                                                             jint preview_h
+                                                                             ) {
 
     nanodetplus.opt.use_vulkan_compute = true;
-    nanodetplus.opt.use_bf16_storage = true;
+//    nanodetplus.opt.use_bf16_storage = true;
 
     // original pretrained model from https://github.com/RangiLyu/nanodet
     // the ncnn model https://github.com/nihui/ncnn-assets/tree/master/models
@@ -267,6 +321,9 @@ Java_com_example_nanodet_1plus_1ncnn_detector_NanodetplusNcnnDetector_detect(JNI
         return NULL;
     float width_ratio = (float) width / (float) target_size;
     float height_ratio = (float) height/ (float) target_size;
+//    float width_ratio = (float) preview_w / (float) target_size;
+//    float height_ratio = (float) preview_h/ (float) target_size;
+
 
 
     // pad to multiple of 32
@@ -286,6 +343,11 @@ Java_com_example_nanodet_1plus_1ncnn_detector_NanodetplusNcnnDetector_detect(JNI
 //    ncnn::Mat in = ncnn::Mat::from_pixels_resize(bgr.data, ncnn::Mat::PIXEL_BGR, width, height, w,
 //                                                 h);
 //    ncnn::Mat in = ncnn::Mat::from_android_bitmap_resize(env, bitmap, ncnn::Mat::PIXEL_BGR, w, h);
+//    ncnn::Mat roi_crop_resize = ncnn::Mat::from_android_bitmap_roi_resize(env, bitmap, ncnn::Mat::PIXEL_BGR, 0,0,)
+//    ncnn::Mat bitmap_to_mat = ncnn::Mat::from_android_bitmap(env, bitmap, ncnn::Mat::PIXEL_RGB);
+//    cv::Mat cvmat(width, height, CV_8UC3);
+//    bitmap_to_mat.to_pixels(cvmat.data, ncnn::Mat::PIXEL_BGR2RGB);
+//    ncnn::Mat in = rotate_crop_resize(cvmat, rotation, crop_w, crop_h, target_size, target_size);
     ncnn::Mat in = ncnn::Mat::from_android_bitmap_resize(env, bitmap, ncnn::Mat::PIXEL_BGR, target_size, target_size);
 
     // pad to target_size rectangle
@@ -324,6 +386,7 @@ Java_com_example_nanodet_1plus_1ncnn_detector_NanodetplusNcnnDetector_detect(JNI
     std::vector<BoxInfo> dets;
     for (int i = 0; i < (int)results.size(); i++)
     {
+
         nms(results[i], nms_threshold);
 
         for (auto box : results[i])
@@ -357,6 +420,12 @@ Java_com_example_nanodet_1plus_1ncnn_detector_NanodetplusNcnnDetector_init(JNIEn
                                                                            jobject thiz,
                                                                            jobject asset_manager,
                                                                            jstring model_name) {
+
+//    ncnn::get_rotation_matrix(180,1,0,0, rotate_90_matrix);
+//    for(auto i : rotate_90_matrix) {
+//        __android_log_print(ANDROID_LOG_INFO,"nanodet rotate matrix:", "%f", i);
+//    }
+
     ncnn::Option opt;
     opt.lightmode = true;
     opt.num_threads = 4;

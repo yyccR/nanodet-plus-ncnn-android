@@ -78,6 +78,8 @@ public class FullScreenAnalyse implements ImageAnalysis.Analyzer {
             ImageProxy.PlaneProxy[] planes = image.getPlanes();
             int imageHeight = image.getHeight();
             int imagewWidth = image.getWidth();
+            int rotate_w = rotation % 180 == 0 ? imageHeight : imagewWidth;
+            int rotate_h = rotation % 180 == 0 ? imagewWidth : imageHeight;
 
             imageProcess.fillBytes(planes, yuvBytes);
             int yRowStride = planes[0].getRowStride();
@@ -102,8 +104,10 @@ public class FullScreenAnalyse implements ImageAnalysis.Analyzer {
 
             // 图片适应屏幕fill_start格式的bitmap
             double scale = Math.max(
-                    previewHeight / (double) (rotation % 180 == 0 ? imagewWidth : imageHeight),
-                    previewWidth / (double) (rotation % 180 == 0 ? imageHeight : imagewWidth)
+//                    previewHeight / (double) (rotation % 180 == 0 ? imagewWidth : imageHeight),
+                    previewHeight / rotate_h,
+//                    previewWidth / (double) (rotation % 180 == 0 ? imageHeight : imagewWidth)
+                    previewWidth / rotate_w
             );
             Matrix fullScreenTransform = imageProcess.getTransformationMatrix(
                     imagewWidth, imageHeight,
@@ -119,23 +123,24 @@ public class FullScreenAnalyse implements ImageAnalysis.Analyzer {
                     previewWidth, previewHeight
             );
 
-            // 模型输入的bitmap
-//            Matrix previewToModelTransform =
-//                    imageProcess.getTransformationMatrix(
-//                            cropImageBitmap.getWidth(), cropImageBitmap.getHeight(),
-//                            yolov5NcnnDetector.getInputSize().getWidth(),
-//                            yolov5NcnnDetector.getInputSize().getHeight(),
-//                            0, false);
-//            Bitmap modelInputBitmap = Bitmap.createBitmap(cropImageBitmap, 0, 0,
-//                    cropImageBitmap.getWidth(), cropImageBitmap.getHeight(),
-//                    previewToModelTransform, false);
-//
-//            Matrix modelToPreviewTransform = new Matrix();
-//            previewToModelTransform.invert(modelToPreviewTransform);
-            NanodetplusNcnnDetector.BoxInfo[] recognitions = nanodetplusNcnnDetector.detect(cropImageBitmap, true, nanodetplusNcnnDetector.NUM_CLASSES);
 
-//            ArrayList<Recognition> recognitions = yolov5NcnnDetector.Detect(modelInputBitmap);
-//
+            NanodetplusNcnnDetector.BoxInfo[] recognitions = nanodetplusNcnnDetector.detect(
+                    cropImageBitmap,
+                    nanodetplusNcnnDetector.NUM_CLASSES);
+
+
+//            int crop_w = (int) Math.floor(rotate_w * previewWidth / (rotate_w * scale));
+//            int crop_h = (int) Math.floor(rotate_h * previewHeight / (rotate_h * scale));
+//            NanodetplusNcnnDetector.BoxInfo[] recognitions = nanodetplusNcnnDetector.detect(
+//                    imageBitmap,
+//                    nanodetplusNcnnDetector.NUM_CLASSES,
+//                    rotation % 180 == 0 ? 90 : 0,
+//                    crop_w,
+//                    crop_h,
+//                    previewWidth,
+//                    previewHeight
+//                    );
+
             Bitmap emptyCropSizeBitmap = Bitmap.createBitmap(previewWidth, previewHeight, Bitmap.Config.ARGB_8888);
             Canvas cropCanvas = new Canvas(emptyCropSizeBitmap);
             // 边框画笔

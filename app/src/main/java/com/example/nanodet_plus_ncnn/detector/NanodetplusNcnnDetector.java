@@ -72,7 +72,17 @@ public class NanodetplusNcnnDetector {
 
     public native boolean init(AssetManager assetManager, String modelName);
 
-    public native NanodetplusNcnnDetector.BoxInfo[] detect(Bitmap bitmap, boolean use_gpu, int num_classes);
+//    public native NanodetplusNcnnDetector.BoxInfo[] detect(
+//            Bitmap bitmap,
+//            int num_classes,
+//            int rotation,
+//            int crop_w,
+//            int crop_h,
+//            int preview_w,
+//            int preview_h);
+    public native NanodetplusNcnnDetector.BoxInfo[] detect(
+            Bitmap bitmap,
+            int num_classes);
 
     static {
         System.loadLibrary("nanodet_plus_ncnn");
