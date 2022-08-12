@@ -87,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
 
         // 全图画面
         cameraPreviewWrap = findViewById(R.id.camera_preview_wrap);
-//        cameraPreviewWrap.setScaleType(PreviewView.ScaleType.FILL_START);
+        cameraPreviewWrap.setScaleType(PreviewView.ScaleType.FIT_START);
 
         // box/label画面
         boxLabelCanvas = findViewById(R.id.box_label_canvas);

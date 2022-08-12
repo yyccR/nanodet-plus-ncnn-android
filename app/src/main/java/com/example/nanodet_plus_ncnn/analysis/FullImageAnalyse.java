@@ -2,6 +2,7 @@ package com.example.nanodet_plus_ncnn.analysis;
 
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Matrix;
@@ -38,6 +39,7 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
         long costTime;
         Bitmap bitmap;
     }
+    int flap = 0;
 
     ImageView boxLabelCanvas;
     PreviewView previewView;
@@ -65,59 +67,67 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
 
     @Override
     public void analyze(@NonNull ImageProxy image) {
+//        if(flap > 10){
+//            return;
+//        }else{
+//            flap++;
+//        }
         int previewHeight = previewView.getHeight();
         int previewWidth = previewView.getWidth();
+        Log.i("preview hw", previewHeight+"/"+previewWidth);
 
         // 这里Observable将image analyse的逻辑放到子线程计算, 渲染UI的时候再拿回来对应的数据, 避免前端UI卡顿
         Observable.create( (ObservableEmitter<Result> emitter) -> {
             long start = System.currentTimeMillis();
 
-            byte[][] yuvBytes = new byte[3][];
-            ImageProxy.PlaneProxy[] planes = image.getPlanes();
+//            byte[][] yuvBytes = new byte[3][];
+//            ImageProxy.PlaneProxy[] planes = image.getPlanes();
+//
             int imageHeight = image.getHeight();
             int imagewWidth = image.getWidth();
-            int rotate_w = rotation % 180 == 0 ? imageHeight : imagewWidth;
-            int rotate_h = rotation % 180 == 0 ? imagewWidth : imageHeight;
-
-            imageProcess.fillBytes(planes, yuvBytes);
-            int yRowStride = planes[0].getRowStride();
-            final int uvRowStride = planes[1].getRowStride();
-            final int uvPixelStride = planes[1].getPixelStride();
-
-            int[] rgbBytes = new int[imageHeight * imagewWidth];
-            imageProcess.YUV420ToARGB8888(
-                    yuvBytes[0],
-                    yuvBytes[1],
-                    yuvBytes[2],
-                    imagewWidth,
-                    imageHeight,
-                    yRowStride,
-                    uvRowStride,
-                    uvPixelStride,
-                    rgbBytes);
-
-            // 原图bitmap
-            Bitmap imageBitmap = Bitmap.createBitmap(imagewWidth, imageHeight, Bitmap.Config.ARGB_8888);
-            imageBitmap.setPixels(rgbBytes, 0, imagewWidth, 0, 0, imagewWidth, imageHeight);
-//            Log.i("nanodet","image w/h"+imagewWidth+"/"+imagewWidth+ " preview w/h"+previewWidth+"/"+previewHeight);
-
-            // 图片适应屏幕fill_start格式的bitmap
-            double scale = Math.max(
-//                    previewHeight / (double) (rotation % 180 == 0 ? imagewWidth : imageHeight),
-                    previewHeight / (double)rotate_h,
-//                    previewWidth / (double) (rotation % 180 == 0 ? imageHeight : imagewWidth)
-                    previewWidth / (double)rotate_w
-            );
-            Matrix fullScreenTransform = imageProcess.getTransformationMatrix(
-                    imagewWidth, imageHeight,
-                    (int) (scale * imageHeight), (int) (scale * imagewWidth),
-                    rotation % 180 == 0 ? 90 : 0, false
-            );
-
-            // 适应preview的全尺寸bitmap
-            Bitmap fullImageBitmap = Bitmap.createBitmap(imageBitmap, 0, 0, imagewWidth, imageHeight, fullScreenTransform, false);
-            // 裁剪出跟preview在屏幕上一样大小的bitmap
-            Bitmap cropImageBitmap = Bitmap.createBitmap(fullImageBitmap, 0, 0, previewWidth, previewHeight);
+//            int rotate_w = rotation % 180 == 0 ? imageHeight : imagewWidth;
+//            int rotate_h = rotation % 180 == 0 ? imagewWidth : imageHeight;
+//
+//            imageProcess.fillBytes(planes, yuvBytes);
+//            int yRowStride = planes[0].getRowStride();
+//            final int uvRowStride = planes[1].getRowStride();
+//            final int uvPixelStride = planes[1].getPixelStride();
+//
+//            int[] rgbBytes = new int[imageHeight * imagewWidth];
+//            imageProcess.YUV420ToARGB8888(
+//                    yuvBytes[0],
+//                    yuvBytes[1],
+//                    yuvBytes[2],
+//                    imagewWidth,
+//                    imageHeight,
+//                    yRowStride,
+//                    uvRowStride,
+//                    uvPixelStride,
+//                    rgbBytes);
+//
+//            // 原图bitmap
+//            Bitmap imageBitmap = Bitmap.createBitmap(imagewWidth, imageHeight, Bitmap.Config.ARGB_8888);
+//            imageBitmap.setPixels(rgbBytes, 0, imagewWidth, 0, 0, imagewWidth, imageHeight);
+////            Log.i("nanodet","image w/h"+imagewWidth+"/"+imagewWidth+ " preview w/h"+previewWidth+"/"+previewHeight);
+//
+//            // 图片适应屏幕fill_start格式的bitmap
+//            double scale = Math.max(
+////                    previewHeight / (double) (rotation % 180 == 0 ? imagewWidth : imageHeight),
+//                    previewHeight / (double)rotate_h,
+////                    previewWidth / (double) (rotation % 180 == 0 ? imageHeight : imagewWidth)
+//                    previewWidth / (double)rotate_w
+//            );
+//            Matrix fullScreenTransform = imageProcess.getTransformationMatrix(
+//                    imagewWidth, imageHeight,
+//                    (int) (scale * imageHeight), (int) (scale * imagewWidth),
+//                    rotation % 180 == 0 ? 90 : 0, false
+//            );
+//
+//            // 适应preview的全尺寸bitmap
+//            Bitmap fullImageBitmap = Bitmap.createBitmap(imageBitmap, 0, 0, imagewWidth, imageHeight, fullScreenTransform, false);
+//            // 裁剪出跟preview在屏幕上一样大小的bitmap
+//            Bitmap cropImageBitmap = Bitmap.createBitmap(fullImageBitmap, 0, 0, previewWidth, previewHeight);
+//            Bitmap cropImageBitmap = Bitmap.createBitmap(fullImageBitmap, 0, 0, 300, 300);
 
             // 模型输入的bitmap
 //            Matrix previewToModelTransform =
@@ -146,7 +156,14 @@ public class FullImageAnalyse implements ImageAnalysis.Analyzer {
 //                    previewWidth,
 //                    previewHeight
 //            );
-            NanodetplusNcnnDetector.BoxInfo[] recognitions = nanodetplusNcnnDetector.detect(cropImageBitmap, nanodetplusNcnnDetector.NUM_CLASSES);
+//            NanodetplusNcnnDetector.BoxInfo[] recognitions = nanodetplusNcnnDetector.detect(cropImageBitmap, nanodetplusNcnnDetector.NUM_CLASSES);
+//            Bitmap yuvBytes2 = imageProcess.yuv420ToNv21(image);
+            byte[] yuvBytes2 = imageProcess.yuv420ToNv21(image);
+//            Bitmap nv21Bitmap = imageProcess.nv21ToBitmap(yuvBytes2, imagewWidth, imageHeight);
+//            Bitmap imageProxyBitmap = imageProcess.imageProxy2Bitmap(image);
+//            Bitmap yuv_bitmap = BitmapFactory.decodeByteArray(yuvBytes2, 0, yuvBytes2.length);
+//            Bitmap cropImageBitmap = Bitmap.createBitmap(yuv_bitmap, 0, 0, 400, 400);
+            NanodetplusNcnnDetector.BoxInfo[] recognitions = nanodetplusNcnnDetector.detect_yuv(yuvBytes2, imagewWidth, imageHeight, nanodetplusNcnnDetector.NUM_CLASSES);
 //            NanodetplusNcnnDetector.BoxInfo[] recognitions = nanodetplusNcnnDetector.detect(cropImageBitmap, true, nanodetplusNcnnDetector.NUM_CLASSES);
 //            ArrayList<Recognition> recognitions = yolov5TFLiteDetector.detect(imageBitmap);
 

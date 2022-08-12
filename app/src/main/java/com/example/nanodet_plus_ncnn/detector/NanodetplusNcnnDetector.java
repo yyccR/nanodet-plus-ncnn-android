@@ -84,6 +84,8 @@ public class NanodetplusNcnnDetector {
             Bitmap bitmap,
             int num_classes);
 
+    public native NanodetplusNcnnDetector.BoxInfo[] detect_yuv(byte[] yuvbytes, int w, int h, int num_classes);
+
     static {
         System.loadLibrary("nanodet_plus_ncnn");
     }

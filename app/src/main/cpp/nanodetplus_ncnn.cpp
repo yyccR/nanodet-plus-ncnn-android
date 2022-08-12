@@ -32,7 +32,15 @@
 //#include <float.h>
 //#include <stdio.h>
 #include <vector>
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgproc.hpp>
+#include <opencv2/imgproc/types_c.h>
+#include <opencv2/core/core.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+//#include <opencv/core.h>
 //#include "math.h"
+
 
 static ncnn::Net nanodetplus;
 static ncnn::UnlockedPoolAllocator g_blob_pool_allocator;
@@ -278,6 +286,174 @@ static jfieldID y2Id;
 static jfieldID labelId;
 static jfieldID scoreId;
 
+extern "C"
+JNIEXPORT jobjectArray JNICALL
+        Java_com_example_nanodet_1plus_1ncnn_detector_NanodetplusNcnnDetector_detect_1yuv(JNIEnv *env,
+                                                                                          jobject thiz,
+                                                                                          jbyteArray yuvbytes,
+                                                                                         jint w,
+                                                                                         jint h,
+                                                                                         jint num_classes){
+    jbyte* _yuv  = env->GetByteArrayElements(yuvbytes, 0);
+
+    cv::Mat image( h,w, CV_8UC3);
+    ncnn::yuv420sp2rgb((unsigned char *)_yuv, w, h, image.data);
+
+    cv::Mat image2(w,h,CV_8UC3);
+    ncnn::kanna_rotate_c3(image.data, w, h,  image2.data, h, w, 6);
+//    cv::imwrite("/data/user/0/com.example.nanodet_plus_ncnn/cache/test2.jpg", image2);
+//
+
+//    auto *rgbData = new unsigned char[(int)h * (int)w * 3];
+//    ncnn::yuv420sp2rgb((const unsigned char*)_yuv, w, h, rgbData);
+//    cv::Mat myuv(h + h/2, w, CV_8UC1, (unsigned char *)_yuv);
+//    cv::Mat mbgr;
+//    cv::cvtColor(myuv, mbgr, CV_YUV420sp2BGR, 4);
+
+//    cv::Mat nv21_rotated(h + h / 2, w, CV_8UC1);
+
+//    ncnn::kanna_rotate_yuv420sp((unsigned char *)_yuv, w, h, nv21_rotated.data, h, w, 8);
+
+//    cv::Mat rgb2(w, h, CV_8UC3);
+//    cv::Mat yuv(h+h/2, w, CV_8UC1, (uchar *)_yuv);
+//    cv::cvtColor(yuv, rgb2, CV_YUV2RGBA_NV21);
+
+
+//    cv::Mat rgb(w, h, CV_8UC3);
+//    ncnn::yuv420sp2rgb(nv21_rotated.data, h, w, rgb.data);
+//    std::string s("/data/user/0/com.example.nanodet_plus_ncnn/cache/test.png");
+//    cv::imwrite(s,rgb);
+
+
+
+    double scale = std::max(
+//                    previewHeight / (double) (rotation % 180 == 0 ? imagewWidth : imageHeight),
+            1440.0 / (double)w,
+//                    previewWidth / (double) (rotation % 180 == 0 ? imageHeight : imagewWidth)
+            1080.0 / (double)h
+    );
+
+    cv::Mat resizeRgb((int)(w*scale), (int)(h*scale), CV_8UC3);
+//    ncnn::resize_bilinear_c3(rgb.data, h, w, resizeRgb.data, (int)(h*scale), (int)(w*scale));
+    cv::resize(image2, resizeRgb, cv::Size((int)(h*scale), (int)(w*scale)));
+//    cv::imwrite("/data/user/0/com.example.nanodet_plus_ncnn/cache/test3.jpg", resizeRgb);
+
+
+//    const unsigned char *yuv = (unsigned char *)_yuv;
+//    ncnn::Mat rgb(w, h, (size_t)3u, 3);
+//    ncnn::yuv420sp2rgb(yuv, w, h, rgb);
+//    cv::Mat rgb = cv::Mat(h,w,CV_8UC3);
+//    ncnn::yuv420sp2rgb(yuv,w, h, rgb.data);
+//    cv::Mat frame_original_yuv = cv::Mat(h + h/2, w, CV_8UC1, _yuv);
+//    cv::Mat frame_original_yuv = cv::Mat(h, w, CV_8UC3, _yuv);
+//    cv::Mat frame_original_rgb = cv::Mat(h, w, CV_8UC3);
+//    cv::cvtColor(frame_original_yuv, frame_original_rgb, CV_YUV2RGB_NV21);
+//    __android_log_print(ANDROID_LOG_INFO,"ncnn wh", "%i", rgb.w);
+//    for(int i = 0; i < 10; i++){
+//        cv::Mat row0 = frame_original_yuv.row(i);
+//        cv::Mat col0 = row0.col(i);
+//        for(int j = 0; j < 2; j++){
+//            __android_log_print(ANDROID_LOG_INFO,"ncnn v", "%i", col0.data[j]);
+//        }
+//    }
+
+
+    nanodetplus.opt.use_vulkan_compute = true;
+//    nanodetplus.opt.use_bf16_storage = true;
+
+    // original pretrained model from https://github.com/RangiLyu/nanodet
+    // the ncnn model https://github.com/nihui/ncnn-assets/tree/master/models
+    //     nanodet.load_param("nanodet-plus-m_320.torchscript.ncnn.param");
+    //     nanodet.load_model("nanodet-plus-m_320.torchscript.ncnn.bin");
+//    if (nanodetplus.load_param("nanodet-plus-m_416.torchscript.ncnn.param"))
+//        exit(-1);
+//    if (nanodetplus.load_model("nanodet-plus-m_416.torchscript.ncnn.bin"))
+//        exit(-1);
+
+//    int width = bgr.cols;
+//    int height = bgr.rows;
+
+    //     const int target_size = 320;
+    const int target_size = 416;
+    std::vector<int> strides = { 8, 16, 32, 64 };
+    const float score_threshold = 0.4f;
+    const float nms_threshold = 0.5f;
+
+//    AndroidBitmapInfo info;
+//    AndroidBitmap_getInfo(env, bitmap, &info);
+//    const int width = info.width;
+//    const int height = info.height;
+//    if (info.format != ANDROID_BITMAP_FORMAT_RGBA_8888)
+//        return NULL;
+//    int width = w;
+//    int height  = h;
+    float width_ratio = (float) 1080 / (float) target_size;
+    float height_ratio = (float) 1440 / (float) target_size;
+
+//    ncnn::Mat in = ncnn::Mat::from_android_bitmap_resize(env, bitmap, ncnn::Mat::PIXEL_BGR, target_size, target_size);
+//    ncnn::Mat in = ncnn::Mat::from_android_bitmap_resize(env, bitmap, ncnn::Mat::PIXEL_BGR, target_size, target_size);
+
+    ncnn::Mat in = ncnn::Mat::from_pixels_resize(resizeRgb.data, ncnn::Mat::PIXEL_BGR, (int)(h*scale), (int)(w*scale), target_size, target_size);
+//    ncnn::Mat in = ncnn::Mat::from_pixels_roi_resize(resizeRgb.data, ncnn::Mat::PIXEL_RGB, (int)(h*scale), (int)(w*scale), 0,0, 1080,1440, target_size, target_size );
+    cv::Mat writeIn(target_size, target_size, CV_8UC3);
+    in.to_pixels(writeIn.data, CV_8UC3);
+//    cv::imwrite("/data/user/0/com.example.nanodet_plus_ncnn/cache/test4.jpg", writeIn);
+    __android_log_print(ANDROID_LOG_INFO,"ncnn wh", "%i", in.w);
+
+
+    const float mean_vals[3] = { 103.53f, 116.28f, 123.675f };
+    const float norm_vals[3] = { 0.017429f, 0.017507f, 0.017125f };
+//    in_pad.substract_mean_normalize(mean_vals, norm_vals);
+    in.substract_mean_normalize(mean_vals, norm_vals);
+
+    ncnn::Extractor ex = nanodetplus.create_extractor();
+//    ex.input("data", in_pad);
+    ex.input("data", in);
+
+    ncnn::Mat out;
+    ex.extract("output", out);
+    // printf("%d %d %d \n", out.w, out.h, out.c);
+
+    // generate center priors in format of (x, y, stride)
+    std::vector<CenterPrior> center_priors;
+    generate_grid_center_priors(target_size, target_size, strides, center_priors);
+
+//    decode_infer(out, center_priors, score_threshold, results);
+    std::vector<std::vector<BoxInfo>> results;
+    results.resize(num_classes);
+    decode_infer(out, num_classes, target_size, center_priors, score_threshold, results, width_ratio, height_ratio);
+
+    std::vector<BoxInfo> dets;
+    for (int i = 0; i < (int)results.size(); i++)
+    {
+
+        nms(results[i], nms_threshold);
+
+        for (auto box : results[i])
+        {
+            dets.push_back(box);
+        }
+    }
+
+
+    jobjectArray jObjArray = env->NewObjectArray(dets.size(), objCls, NULL);
+    for (size_t i=0; i < dets.size(); i++)
+    {
+        jobject jObj = env->NewObject(objCls, constructortorId, thiz);
+
+        env->SetFloatField(jObj, x1Id, dets[i].x1);
+        env->SetFloatField(jObj, y1Id, dets[i].y1);
+        env->SetFloatField(jObj, x2Id, dets[i].x2);
+        env->SetFloatField(jObj, y2Id, dets[i].y2);
+        env->SetIntField(jObj, labelId, dets[i].label);
+        env->SetFloatField(jObj, scoreId, dets[i].score);
+
+        env->SetObjectArrayElement(jObjArray, i, jObj);
+    }
+
+    return jObjArray;
+
+};
 
 extern "C"
 JNIEXPORT jobjectArray JNICALL
@@ -285,11 +461,6 @@ Java_com_example_nanodet_1plus_1ncnn_detector_NanodetplusNcnnDetector_detect(JNI
                                                                              jobject thiz,
                                                                              jobject bitmap,
                                                                              jint num_classes
-//                                                                             jint rotation,
-//                                                                             jint crop_w,
-//                                                                             jint crop_h,
-//                                                                             jint preview_w,
-//                                                                             jint preview_h
                                                                              ) {
 
     nanodetplus.opt.use_vulkan_compute = true;
@@ -349,7 +520,6 @@ Java_com_example_nanodet_1plus_1ncnn_detector_NanodetplusNcnnDetector_detect(JNI
 //    bitmap_to_mat.to_pixels(cvmat.data, ncnn::Mat::PIXEL_BGR2RGB);
 //    ncnn::Mat in = rotate_crop_resize(cvmat, rotation, crop_w, crop_h, target_size, target_size);
     ncnn::Mat in = ncnn::Mat::from_android_bitmap_resize(env, bitmap, ncnn::Mat::PIXEL_BGR, target_size, target_size);
-
     // pad to target_size rectangle
 //    int wpad = (w + 31) / 32 * 32 - w;
 //    int hpad = (h + 31) / 32 * 32 - h;
