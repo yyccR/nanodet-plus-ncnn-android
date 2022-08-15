@@ -296,9 +296,15 @@ JNIEXPORT jobjectArray JNICALL
                                                                                          jint num_classes){
     jbyte* _yuv  = env->GetByteArrayElements(yuvbytes, 0);
 
+//    cv::Mat nv21_rotated(h + h / 2, w, CV_8UC1);
+//    ncnn::kanna_rotate_yuv420sp((unsigned char *)_yuv, w, h, nv21_rotated.data, h, w, 6);
+//
+//    cv::Mat image2(w, h, CV_8UC3);
+//    cv::Mat yuv(h+h/2, w, CV_8UC1, (uchar *)_yuv);
+//    cv::cvtColor(yuv, image2, CV_YUV2RGB_NV21);
+
     cv::Mat image( h,w, CV_8UC3);
     ncnn::yuv420sp2rgb((unsigned char *)_yuv, w, h, image.data);
-
     cv::Mat image2(w,h,CV_8UC3);
     ncnn::kanna_rotate_c3(image.data, w, h,  image2.data, h, w, 6);
 //    cv::imwrite("/data/user/0/com.example.nanodet_plus_ncnn/cache/test2.jpg", image2);
@@ -326,16 +332,18 @@ JNIEXPORT jobjectArray JNICALL
 
 
 
-    double scale = std::max(
-//                    previewHeight / (double) (rotation % 180 == 0 ? imagewWidth : imageHeight),
-            1440.0 / (double)w,
-//                    previewWidth / (double) (rotation % 180 == 0 ? imageHeight : imagewWidth)
-            1080.0 / (double)h
-    );
+//    double scale = std::max(
+////                    previewHeight / (double) (rotation % 180 == 0 ? imagewWidth : imageHeight),
+//            1440.0 / (double)w,
+////                    previewWidth / (double) (rotation % 180 == 0 ? imageHeight : imagewWidth)
+//            1080.0 / (double)h
+//    );
+//
+//    cv::Mat resizeRgb((int)(w*scale), (int)(h*scale), CV_8UC3);
+////    ncnn::resize_bilinear_c3(rgb.data, h, w, resizeRgb.data, (int)(h*scale), (int)(w*scale));
+//    cv::resize(image2, resizeRgb, cv::Size((int)(h*scale), (int)(w*scale)));
 
-    cv::Mat resizeRgb((int)(w*scale), (int)(h*scale), CV_8UC3);
-//    ncnn::resize_bilinear_c3(rgb.data, h, w, resizeRgb.data, (int)(h*scale), (int)(w*scale));
-    cv::resize(image2, resizeRgb, cv::Size((int)(h*scale), (int)(w*scale)));
+
 //    cv::imwrite("/data/user/0/com.example.nanodet_plus_ncnn/cache/test3.jpg", resizeRgb);
 
 
@@ -358,7 +366,7 @@ JNIEXPORT jobjectArray JNICALL
 //    }
 
 
-    nanodetplus.opt.use_vulkan_compute = true;
+//    nanodetplus.opt.use_vulkan_compute = true;
 //    nanodetplus.opt.use_bf16_storage = true;
 
     // original pretrained model from https://github.com/RangiLyu/nanodet
@@ -393,12 +401,13 @@ JNIEXPORT jobjectArray JNICALL
 //    ncnn::Mat in = ncnn::Mat::from_android_bitmap_resize(env, bitmap, ncnn::Mat::PIXEL_BGR, target_size, target_size);
 //    ncnn::Mat in = ncnn::Mat::from_android_bitmap_resize(env, bitmap, ncnn::Mat::PIXEL_BGR, target_size, target_size);
 
-    ncnn::Mat in = ncnn::Mat::from_pixels_resize(resizeRgb.data, ncnn::Mat::PIXEL_BGR, (int)(h*scale), (int)(w*scale), target_size, target_size);
+//    ncnn::Mat in = ncnn::Mat::from_pixels_resize(resizeRgb.data, ncnn::Mat::PIXEL_BGR, (int)(h*scale), (int)(w*scale), target_size, target_size);
+    ncnn::Mat in = ncnn::Mat::from_pixels_resize(image2.data, ncnn::Mat::PIXEL_RGB, h, w, target_size, target_size);
 //    ncnn::Mat in = ncnn::Mat::from_pixels_roi_resize(resizeRgb.data, ncnn::Mat::PIXEL_RGB, (int)(h*scale), (int)(w*scale), 0,0, 1080,1440, target_size, target_size );
-    cv::Mat writeIn(target_size, target_size, CV_8UC3);
-    in.to_pixels(writeIn.data, CV_8UC3);
+//    cv::Mat writeIn(target_size, target_size, CV_8UC3);
+//    in.to_pixels(writeIn.data, CV_8UC3);
 //    cv::imwrite("/data/user/0/com.example.nanodet_plus_ncnn/cache/test4.jpg", writeIn);
-    __android_log_print(ANDROID_LOG_INFO,"ncnn wh", "%i", in.w);
+//    __android_log_print(ANDROID_LOG_INFO,"ncnn wh", "%i", in.w);
 
 
     const float mean_vals[3] = { 103.53f, 116.28f, 123.675f };
@@ -463,7 +472,7 @@ Java_com_example_nanodet_1plus_1ncnn_detector_NanodetplusNcnnDetector_detect(JNI
                                                                              jint num_classes
                                                                              ) {
 
-    nanodetplus.opt.use_vulkan_compute = true;
+//    nanodetplus.opt.use_vulkan_compute = true;
 //    nanodetplus.opt.use_bf16_storage = true;
 
     // original pretrained model from https://github.com/RangiLyu/nanodet
